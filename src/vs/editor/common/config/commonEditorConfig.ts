@@ -325,6 +325,7 @@ class InternalEditorOptionsHelper {
 			wordBasedSuggestions: opts.wordBasedSuggestions,
 			suggestFontSize: opts.suggestFontSize,
 			suggestLineHeight: opts.suggestLineHeight,
+			suggestAutoExpand: opts.suggestAutoExpand,
 			selectionHighlight: toBoolean(opts.selectionHighlight),
 			occurrencesHighlight: toBoolean(opts.occurrencesHighlight),
 			codeLens: opts.referenceInfos && opts.codeLens,
@@ -852,6 +853,11 @@ const editorConfiguration: IConfigurationNode = {
 			'default': 0,
 			'minimum': 0,
 			'description': nls.localize('suggestLineHeight', "Line height for the suggest widget")
+		},
+		'editor.suggestAutoExpand': {
+			'type': 'boolean',
+			'default': DefaultConfig.editor.suggestAutoExpand,
+			'description': nls.localize('suggestAutoExpand', "Experimental feature: Controls whether the suggestion item in focus should have the docs auto expanded.")
 		},
 		'editor.selectionHighlight': {
 			'type': 'boolean',

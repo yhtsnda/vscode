@@ -396,6 +396,11 @@ export interface IEditorOptions {
 	 */
 	suggestLineHeight?: number;
 	/**
+	 * Auto expands docs for the suggestion item in focus
+	 * Defaults to false
+	 */
+	suggestAutoExpand?: boolean;
+	/**
 	 * Enable selection highlight.
 	 * Defaults to true.
 	 */
@@ -1013,6 +1018,7 @@ export class EditorContribOptions {
 	readonly wordBasedSuggestions: boolean;
 	readonly suggestFontSize: number;
 	readonly suggestLineHeight: number;
+	readonly suggestAutoExpand: boolean;
 	readonly selectionHighlight: boolean;
 	readonly occurrencesHighlight: boolean;
 	readonly codeLens: boolean;
@@ -1040,6 +1046,7 @@ export class EditorContribOptions {
 		wordBasedSuggestions: boolean;
 		suggestFontSize: number;
 		suggestLineHeight: number;
+		suggestAutoExpand: boolean;
 		selectionHighlight: boolean;
 		occurrencesHighlight: boolean;
 		codeLens: boolean;
@@ -1063,6 +1070,7 @@ export class EditorContribOptions {
 		this.wordBasedSuggestions = source.wordBasedSuggestions;
 		this.suggestFontSize = source.suggestFontSize;
 		this.suggestLineHeight = source.suggestLineHeight;
+		this.suggestAutoExpand = source.suggestAutoExpand;
 		this.selectionHighlight = Boolean(source.selectionHighlight);
 		this.occurrencesHighlight = Boolean(source.occurrencesHighlight);
 		this.codeLens = Boolean(source.codeLens);
@@ -1092,6 +1100,7 @@ export class EditorContribOptions {
 			&& objects.equals(this.wordBasedSuggestions, other.wordBasedSuggestions)
 			&& this.suggestFontSize === other.suggestFontSize
 			&& this.suggestLineHeight === other.suggestLineHeight
+			&& this.suggestAutoExpand === other.suggestAutoExpand
 			&& this.selectionHighlight === other.selectionHighlight
 			&& this.occurrencesHighlight === other.occurrencesHighlight
 			&& this.codeLens === other.codeLens

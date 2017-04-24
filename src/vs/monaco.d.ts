@@ -3000,6 +3000,11 @@ declare module monaco.editor {
          */
         suggestLineHeight?: number;
         /**
+         * Auto expands docs for the suggestion item in focus
+         * Defaults to false
+         */
+        suggestAutoExpand?: boolean;
+        /**
          * Enable selection highlight.
          * Defaults to true.
          */
@@ -3275,6 +3280,7 @@ declare module monaco.editor {
         readonly wordBasedSuggestions: boolean;
         readonly suggestFontSize: number;
         readonly suggestLineHeight: number;
+        readonly suggestAutoExpand: boolean;
         readonly selectionHighlight: boolean;
         readonly occurrencesHighlight: boolean;
         readonly codeLens: boolean;

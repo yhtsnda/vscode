@@ -101,6 +101,7 @@ class ConfigClass implements IConfiguration {
 			wordBasedSuggestions: true,
 			suggestFontSize: 0,
 			suggestLineHeight: 0,
+			suggestAutoExpand: false,
 			selectionHighlight: true,
 			occurrencesHighlight: true,
 			codeLens: true,
