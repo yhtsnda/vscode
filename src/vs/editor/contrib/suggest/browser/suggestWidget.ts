@@ -64,6 +64,21 @@ function canExpandCompletionItem(item: ICompletionItem) {
 	return (suggestion.detail || '').indexOf('\n') >= 0;
 }
 
+function getLineHeight(editor: ICodeEditor): number {
+	const configuration = editor.getConfiguration();
+	return configuration.contribInfo.suggestLineHeight || configuration.fontInfo.lineHeight;
+}
+
+function canAutoExpand(editor: ICodeEditor): boolean {
+	let autoExpandValue: string = editor.getConfiguration().contribInfo.suggestAutoExpand;
+	return autoExpandValue !== 'off';
+}
+
+function autoExpandToSide(editor: ICodeEditor): boolean {
+	let autoExpandValue: string = editor.getConfiguration().contribInfo.suggestAutoExpand;
+	return autoExpandValue === 'side';
+}
+
 class Renderer implements IRenderer<ICompletionItem, ISuggestionTemplateData> {
 
 	private triggerKeybindingLabel: string;
@@ -152,7 +167,8 @@ class Renderer implements IRenderer<ICompletionItem, ISuggestionTemplateData> {
 
 		data.documentation.textContent = suggestion.documentation || '';
 
-		if (canExpandCompletionItem(element)) {
+		// Show the Read More button only if the item can be expanded and autoExpand is disabled
+		if (canExpandCompletionItem(element) && !canAutoExpand(this.editor)) {
 			show(data.documentationDetails);
 			data.documentationDetails.onmousedown = e => {
 				e.stopPropagation();
@@ -165,6 +181,9 @@ class Renderer implements IRenderer<ICompletionItem, ISuggestionTemplateData> {
 			};
 		} else {
 			hide(data.documentationDetails);
+			if (autoExpandToSide(this.editor)) {
+				hide(data.typeLabel);
+			}
 			data.documentationDetails.onmousedown = null;
 			data.documentationDetails.onclick = null;
 		}
@@ -195,6 +214,7 @@ class SuggestionDetails {
 	private body: HTMLElement;
 	private type: HTMLElement;
 	private docs: HTMLElement;
+	private header: HTMLElement;
 	private ariaLabel: string;
 	private disposables: IDisposable[];
 
@@ -208,12 +228,12 @@ class SuggestionDetails {
 		this.el = append(container, $('.details'));
 		this.disposables.push(toDisposable(() => container.removeChild(this.el)));
 
-		const header = append(this.el, $('.header'));
-		this.title = append(header, $('span.title'));
+		this.header = append(this.el, $('.header'));
+		this.title = append(this.header, $('span.title'));
 		this.titleLabel = new HighlightedLabel(this.title);
 		this.disposables.push(this.titleLabel);
 
-		this.back = append(header, $('span.go-back'));
+		this.back = append(this.header, $('span.go-back'));
 		this.back.title = nls.localize('goback', "Go back");
 		this.body = $('.body');
 
@@ -258,6 +278,14 @@ class SuggestionDetails {
 			this.widget.toggleDetails();
 		};
 
+		// If autoExpand is enabled, then hide the header as it has redundant information
+		if (canAutoExpand(this.editor)) {
+			hide(this.header);
+			this.el.style.height = this.getHeight(item) + 'px';
+		} else {
+			show(this.header);
+		}
+
 		this.body.scrollTop = 0;
 		this.scrollbar.scanDomNode();
 
@@ -290,6 +318,18 @@ class SuggestionDetails {
 
 	pageUp(): void {
 		this.scrollUp(80);
+	}
+
+	getHeight(item: ICompletionItem): number {
+		return (!item || !item.suggestion || !canExpandCompletionItem(item)) ? 0 : 12 * getLineHeight(this.editor);
+	}
+
+	setBackgroundColor(bgColor: string): void {
+		this.el.style.backgroundColor = bgColor;
+	}
+
+	setBorder(borderStyle: string): void {
+		this.el.style.border = borderStyle;
 	}
 
 	private configureFont() {
@@ -471,12 +511,15 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 	private onThemeChange(theme: ITheme) {
 		let backgroundColor = theme.getColor(editorSuggestWidgetBackground);
 		if (backgroundColor) {
-			this.element.style.backgroundColor = backgroundColor.toString();
+			this.listElement.style.backgroundColor = backgroundColor.toString();
+			this.details.setBackgroundColor(backgroundColor.toString());
 		}
 		let borderColor = theme.getColor(editorSuggestWidgetBorder);
 		if (borderColor) {
 			let borderWidth = theme.type === 'hc' ? 2 : 1;
-			this.element.style.border = `${borderWidth}px solid ${borderColor}`;
+			let borderStyle = `${borderWidth}px solid ${borderColor}`;
+			this.listElement.style.border = borderStyle;
+			this.details.setBorder(borderStyle);
 		}
 	}
 
@@ -544,7 +587,9 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 				this.list.setFocus([index]);
 				this.updateWidgetHeight();
 				this.list.reveal(index);
-
+				if (canAutoExpand(this.editor)) {
+					this.showDetails();
+				};
 				this._ariaAlert(this._getSuggestionAriaAlertLabel(item));
 			})
 			.then(null, err => !isPromiseCanceledError(err) && onUnexpectedError(err))
@@ -598,6 +643,9 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 			case State.Details:
 				hide(this.messageElement, this.listElement);
 				show(this.details.element);
+				if (canAutoExpand(this.editor)) {
+					show(this.listElement);
+				}
 				this.show();
 				this._ariaAlert(this.details.getAriaLabel());
 				break;
@@ -773,8 +821,13 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 			this.editor.focus();
 			return;
 		}
+		this.showDetails();
+		this.telemetryService.publicLog('suggestWidget:toggleDetails', this.editor.getTelemetryData());
 
-		if (this.state !== State.Open) {
+	}
+
+	showDetails(): void {
+		if (this.state !== State.Open && this.state !== State.Details) {
 			return;
 		}
 
@@ -786,7 +839,6 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 
 		this.setState(State.Details);
 		this.editor.focus();
-		this.telemetryService.publicLog('suggestWidget:toggleDetails', this.editor.getTelemetryData());
 	}
 
 	private show(): void {
@@ -840,10 +892,11 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 
 	private updateWidgetHeight(): number {
 		let height = 0;
+		let detailsHeight = this.details.getHeight(this.focusedItem);
 
 		if (this.state === State.Empty || this.state === State.Loading) {
 			height = this.unfocusedHeight;
-		} else if (this.state === State.Details) {
+		} else if (!canAutoExpand(this.editor) && this.state === State.Details) {
 			height = 12 * this.unfocusedHeight;
 		} else {
 			const focus = this.list.getFocusedElements()[0];
@@ -855,7 +908,24 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 		}
 
 		this.element.style.lineHeight = `${this.unfocusedHeight}px`;
-		this.element.style.height = `${height}px`;
+		this.listElement.style.height = `${height}px`;
+
+		if (!canAutoExpand(this.editor)) {
+			this.element.style.height = `${height}px`;
+		} else if (!autoExpandToSide(this.editor)) {
+			this.element.style.height = `${height + detailsHeight}px`;
+		} else if (detailsHeight === 0) {
+			this.element.style.height = `${height}px`;
+		} else {
+			this.element.style.height = `${detailsHeight}px`;
+		}
+
+		if (autoExpandToSide(this.editor) && canExpandCompletionItem(this.focusedItem)) {
+			addClass(this.element, 'side-by-side');
+		} else {
+			removeClass(this.element, 'side-by-side');
+		}
+
 		this.list.layout(height);
 		this.editor.layoutContentWidget(this);
 
@@ -877,14 +947,13 @@ export class SuggestWidget implements IContentWidget, IDelegate<ICompletionItem>
 	}
 
 	private get unfocusedHeight(): number {
-		const configuration = this.editor.getConfiguration();
-		return configuration.contribInfo.suggestLineHeight || configuration.fontInfo.lineHeight;
+		return getLineHeight(this.editor);
 	}
 
 	// IDelegate
 
 	getHeight(element: ICompletionItem): number {
-		if (canExpandCompletionItem(element) && element === this.focusedItem) {
+		if (canExpandCompletionItem(element) && element === this.focusedItem && !canAutoExpand(this.editor)) {
 			return this.focusHeight;
 		}
 

@@ -9,6 +9,10 @@
 	width: 438px;
 }
 
+.monaco-editor .suggest-widget.side-by-side {
+	width: 660px;
+}
+
 .monaco-editor .suggest-widget.visible {
 	-webkit-transition: left .05s ease-in-out;
 	-moz-transition: left .05s ease-in-out;
@@ -24,6 +28,11 @@
 .monaco-editor .suggest-widget > .tree {
 	height: 100%;
 	width: 100%;
+}
+
+.monaco-editor .suggest-widget.suggest-widget.side-by-side > .tree {
+	width: 40%;
+	float: left;
 }
 
 .monaco-editor .suggest-widget .monaco-list .monaco-list-row {
